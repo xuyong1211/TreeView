@@ -1,19 +1,38 @@
 package com.xuyong.treeview.group
 
 import android.content.Context
+import android.graphics.Canvas
+import android.graphics.Color
+import android.graphics.Paint
+import android.graphics.Path
 import android.util.AttributeSet
 import android.util.Log
 import android.view.ViewGroup
 import androidx.core.view.children
+import com.xuyong.treeview.R
 import com.xuyong.treeview.px
 import kotlin.math.max
 
 class TreeView(context: Context, attributeSet: AttributeSet) : ViewGroup(context, attributeSet) {
 
+    var verticalGap = 15
+    var horizontalGap = 5
+    var lineWidth = 5
+
     private var widthCount = 0
     var adapter: TreeAdapter? = null
 
     var maxDeep: Int = 0
+
+    init {
+        setWillNotDraw(false)
+        val obtainStyledAttributes =
+            context.obtainStyledAttributes(attributeSet, R.styleable.TreeView)
+        verticalGap = obtainStyledAttributes.getInteger(R.styleable.TreeView_verticalGap, 5)
+        horizontalGap = obtainStyledAttributes.getInteger(R.styleable.TreeView_horizontalGap, 15)
+        lineWidth = obtainStyledAttributes.getInteger(R.styleable.TreeView_lineWidth, 1)
+        obtainStyledAttributes.recycle()
+    }
 
     /**
      * 遍历tree数据，创建所有的节点view，同时求出tree的最大深度，为每个node的deep(深度)赋值
@@ -24,7 +43,7 @@ class TreeView(context: Context, attributeSet: AttributeSet) : ViewGroup(context
             return
         }
         node.children?.forEach { treeNode ->
-            obtainAllView(treeNode, deep +1)
+            obtainAllView(treeNode, deep + 1)
 
         }
         if (node.children == null) {
@@ -41,18 +60,24 @@ class TreeView(context: Context, attributeSet: AttributeSet) : ViewGroup(context
         super.onMeasure(widthMeasureSpec, heightMeasureSpec)
         widthCount = 0
         obtainAllView(adapter?.treeNode, 1)
-        childWidth = measuredWidth / widthCount - 2.px()
+        childWidth = measuredWidth / widthCount
         childHeight = measuredHeight / maxDeep
         currentX = 0
         measureAllView(adapter?.treeNode!!)
         addAllViews(adapter?.treeNode!!)
         for (child in children) {
-            child.measure(MeasureSpec.makeMeasureSpec(childWidth,MeasureSpec.EXACTLY),MeasureSpec.makeMeasureSpec(childHeight-5.px(),MeasureSpec.EXACTLY))
+            child.measure(
+                MeasureSpec.makeMeasureSpec(
+                    childWidth - horizontalGap.px(),
+                    MeasureSpec.EXACTLY
+                ), MeasureSpec.makeMeasureSpec(childHeight - verticalGap.px(), MeasureSpec.EXACTLY)
+            )
         }
-        setMeasuredDimension(MeasureSpec.getSize(widthMeasureSpec),MeasureSpec.getSize(heightMeasureSpec))
+        setMeasuredDimension(
+            MeasureSpec.getSize(widthMeasureSpec),
+            MeasureSpec.getSize(heightMeasureSpec)
+        )
     }
-
-
 
 
     var childWidth = 0
@@ -62,21 +87,60 @@ class TreeView(context: Context, attributeSet: AttributeSet) : ViewGroup(context
         layoutAllView(adapter?.treeNode!!)
     }
 
+    override fun onDraw(canvas: Canvas?) {
+        drawLines(adapter?.treeNode, canvas)
+        super.onDraw(canvas)
+    }
+
+    /**
+     * 绘制父子节点的连线
+     */
+    private fun drawLines(node: TreeNode?, canvas: Canvas?) {
+        if (node?.children != null && node.children!!.isNotEmpty()) {
+            val path = Path()
+            node.children!!.forEach {
+                path.moveTo(
+                    (node.x + ((childWidth - horizontalGap.px()) / 2)).toFloat(),
+                    (node.y + childHeight - verticalGap.px()).toFloat()
+                )
+                path.lineTo(
+                    (it.x + ((childWidth - horizontalGap.px()) / 2)).toFloat(),
+                    it.y.toFloat()
+                )
+                canvas!!.drawPath(path, Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                    this.color = Color.BLACK
+                    this.style = Paint.Style.STROKE
+                    this.strokeWidth = lineWidth.px().toFloat()
+                })
+                drawLines(it, canvas)
+            }
+        }
+
+    }
+
     private fun layoutAllView(treeNode: TreeNode) {
 
         if (treeNode.children == null) {
-            treeNode.view?.layout(treeNode.x+2.px(),treeNode.y,(treeNode.x + childWidth),(treeNode.y+childHeight-5.px()))
-
+            treeNode.view?.layout(
+                treeNode.x,
+                treeNode.y,
+                (treeNode.x + childWidth),
+                (treeNode.y + childHeight - verticalGap.px())
+            )
             return
         }
 
-        for ((_,childNode) in(treeNode.children!!.withIndex())){
+        for ((_, childNode) in (treeNode.children!!.withIndex())) {
             layoutAllView(childNode)
         }
 
-        treeNode.view?.layout(treeNode.x,treeNode.y,(treeNode.x + childWidth),(treeNode.y+childHeight-5.px()))
+        treeNode.view?.layout(
+            treeNode.x,
+            treeNode.y,
+            (treeNode.x + childWidth),
+            (treeNode.y + childHeight - verticalGap.px())
+        )
     }
-
 
 
     private fun addAllViews(treeNode: TreeNode) {
@@ -85,7 +149,7 @@ class TreeView(context: Context, attributeSet: AttributeSet) : ViewGroup(context
             return
         }
 
-        for ((_,childNode) in(treeNode.children!!.withIndex())){
+        for ((_, childNode) in (treeNode.children!!.withIndex())) {
             addAllViews(childNode)
         }
 
@@ -102,11 +166,11 @@ class TreeView(context: Context, attributeSet: AttributeSet) : ViewGroup(context
             currentX += childWidth
             treeNode.x = (currentX - childWidth)
             treeNode.y = ((treeNode.deep.minus(1)).times(childHeight))
-            Log.d("measureAllView","${treeNode.name1}-- ${treeNode.x} -- ${treeNode.y}")
+            Log.d("measureAllView", "${treeNode.name1}-- ${treeNode.x} -- ${treeNode.y}")
             return currentX - childWidth
         }
 
-        for ((index,childNode) in(treeNode.children!!.withIndex())){
+        for ((index, childNode) in (treeNode.children!!.withIndex())) {
             val x = measureAllView(childNode)
             if (index == 0) {
                 leftX = x + childWidth
@@ -118,7 +182,7 @@ class TreeView(context: Context, attributeSet: AttributeSet) : ViewGroup(context
         val nodeX = leftX + (rightX - leftX) / 2  //父节点的x坐标 取其最左和最右两个子node的中点
         treeNode.x = (nodeX - (childWidth / 2))
         treeNode.y = ((treeNode.deep.minus(1)).times(childHeight))
-        Log.d("measureAllView","${treeNode.name1}-- ${treeNode.x} -- ${treeNode.y}")
+        Log.d("measureAllView", "${treeNode.name1}-- ${treeNode.x} -- ${treeNode.y}")
         return (nodeX - (childWidth / 2))
     }
 
