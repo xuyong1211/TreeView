@@ -4,5 +4,6 @@
         <attr name="verticalGap" format="integer"/>
         <attr name="horizontalGap" format="integer"/>
         <attr name="lineWidth" format="integer"/>
+        <attr name="drawLine" format="boolean"/>
     </declare-styleable>
 </resources>

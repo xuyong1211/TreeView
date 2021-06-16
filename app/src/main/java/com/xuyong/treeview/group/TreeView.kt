@@ -18,6 +18,7 @@ class TreeView(context: Context, attributeSet: AttributeSet) : ViewGroup(context
     var verticalGap = 15
     var horizontalGap = 5
     var lineWidth = 5
+    var drawLine = false
 
     private var widthCount = 0
     var adapter: TreeAdapter? = null
@@ -25,12 +26,13 @@ class TreeView(context: Context, attributeSet: AttributeSet) : ViewGroup(context
     var maxDeep: Int = 0
 
     init {
-        setWillNotDraw(false)
         val obtainStyledAttributes =
             context.obtainStyledAttributes(attributeSet, R.styleable.TreeView)
         verticalGap = obtainStyledAttributes.getInteger(R.styleable.TreeView_verticalGap, 5)
         horizontalGap = obtainStyledAttributes.getInteger(R.styleable.TreeView_horizontalGap, 15)
         lineWidth = obtainStyledAttributes.getInteger(R.styleable.TreeView_lineWidth, 1)
+        drawLine = obtainStyledAttributes.getBoolean(R.styleable.TreeView_drawLine, false)
+        if(drawLine){ setWillNotDraw(false) }
         obtainStyledAttributes.recycle()
     }
 
@@ -88,7 +90,7 @@ class TreeView(context: Context, attributeSet: AttributeSet) : ViewGroup(context
     }
 
     override fun onDraw(canvas: Canvas?) {
-        drawLines(adapter?.treeNode, canvas)
+        if(drawLine){drawLines(adapter?.treeNode, canvas)}
         super.onDraw(canvas)
     }
 
@@ -122,7 +124,7 @@ class TreeView(context: Context, attributeSet: AttributeSet) : ViewGroup(context
 
         if (treeNode.children == null) {
             treeNode.view?.layout(
-                treeNode.x,
+                treeNode.x + 2.px(),
                 treeNode.y,
                 (treeNode.x + childWidth),
                 (treeNode.y + childHeight - verticalGap.px())
@@ -135,7 +137,7 @@ class TreeView(context: Context, attributeSet: AttributeSet) : ViewGroup(context
         }
 
         treeNode.view?.layout(
-            treeNode.x,
+            treeNode.x + 2.px(),
             treeNode.y,
             (treeNode.x + childWidth),
             (treeNode.y + childHeight - verticalGap.px())
