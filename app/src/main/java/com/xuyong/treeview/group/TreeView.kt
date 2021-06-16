@@ -46,7 +46,6 @@ class TreeView(context: Context, attributeSet: AttributeSet) : ViewGroup(context
         }
         node.children?.forEach { treeNode ->
             obtainAllView(treeNode, deep + 1)
-
         }
         if (node.children == null) {
             widthCount++   // 末节点 占一个单位宽度

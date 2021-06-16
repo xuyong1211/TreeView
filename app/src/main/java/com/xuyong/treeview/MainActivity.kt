@@ -2,6 +2,7 @@ package com.xuyong.treeview
 
 import android.os.Bundle
 import android.view.View
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.xuyong.treeview.group.TreeAdapterImp
 import com.xuyong.treeview.group.TreeNode
@@ -83,6 +84,11 @@ class MainActivity : AppCompatActivity() {
         val treeNode24 = TreeNode("父亲")
         treeNode24.children = (list10)
         adapterImp.treeNode = (treeNode24)
+        adapterImp.nodeClickListener = object :TreeAdapterImp.NodeClickListener{
+            override fun onNodeClick(node: TreeNode) {
+                Toast.makeText(this@MainActivity,node.name1,Toast.LENGTH_SHORT).show()
+            }
+        }
         treeView.adapter = (adapterImp)
     }
 }
