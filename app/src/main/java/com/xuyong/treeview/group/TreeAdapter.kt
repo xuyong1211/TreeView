@@ -12,4 +12,6 @@ interface TreeAdapter{
 
     fun getView(node: TreeNode, viewGroup: ViewGroup):View
 
+    fun getViewType(node:TreeNode):Int
+
 }

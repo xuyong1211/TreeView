@@ -20,6 +20,10 @@ class TreeAdapterImp : TreeAdapter {
         return view
     }
 
+    override fun getViewType(node: TreeNode): Int {
+        return 0
+    }
+
 
     lateinit var nodeClickListener :(TreeNode)->Unit
 }
