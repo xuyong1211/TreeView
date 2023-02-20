@@ -24,8 +24,6 @@ import kotlin.math.max
 import kotlin.math.min
 
 
-private val IMAGE_SIZE = 300.dp.toInt()
-private const val EXTRA_SCALE_FACTOR = 1.5f
 class TouchableTreeView(context: Context, attributeSet: AttributeSet) : ViewGroup(context, attributeSet) {
 
     var verticalGap = 15
@@ -38,9 +36,6 @@ class TouchableTreeView(context: Context, attributeSet: AttributeSet) : ViewGrou
 
     var maxDeep: Int = 0
 
-
-    private var originalOffsetX = 0f
-    private var originalOffsetY = 0f
     private var offsetX = 0f
     private var offsetY = 0f
     private var smallScale = 0f
@@ -60,25 +55,7 @@ class TouchableTreeView(context: Context, attributeSet: AttributeSet) : ViewGrou
     private val scroller = OverScroller(context)
 
 
-    override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
-        super.onSizeChanged(w, h, oldw, oldh)
 
-        originalOffsetX = (width - IMAGE_SIZE) / 2f
-        originalOffsetY = (height - IMAGE_SIZE) / 2f
-
-        smallScale = 1f
-        bigScale = 2f
-        currentScale = smallScale
-        scaleAnimator.setFloatValues(smallScale, bigScale)
-    }
-
-    override fun onTouchEvent(event: MotionEvent?): Boolean {
-        scaleGestureDetector.onTouchEvent(event)
-        if (!scaleGestureDetector.isInProgress) {
-            gestureDetector.onTouchEvent(event)
-        }
-        return true
-    }
 
     init {
         val obtainStyledAttributes =
@@ -129,7 +106,7 @@ class TouchableTreeView(context: Context, attributeSet: AttributeSet) : ViewGrou
                     childWidth - horizontalGap.px(),
                     MeasureSpec.EXACTLY
                 ), MeasureSpec.makeMeasureSpec(childHeight - verticalGap.px(), MeasureSpec.EXACTLY)
-            )
+            )//此处只考虑在给定布局大小内摆放所有树节点，其他测量模式同理只是确定该布局大小的依据不同
         }
         setMeasuredDimension(
             MeasureSpec.getSize(widthMeasureSpec),
@@ -146,22 +123,22 @@ class TouchableTreeView(context: Context, attributeSet: AttributeSet) : ViewGrou
     }
 
     override fun onDraw(canvas: Canvas) {
-        val scaleFraction = (currentScale - smallScale) / (bigScale - smallScale)
-//        canvas.save()
-        canvas.translate(offsetX * scaleFraction, offsetY * scaleFraction)
-        canvas.scale(currentScale, currentScale, width / 2f, height / 2f)
-        if(drawLine){drawLines(adapter?.treeNode, canvas)}
-//        canvas.restore()
-        super.onDraw(canvas)
 
-//        canvas.translate(offsetX * scaleFraction, offsetY * scaleFraction)
-//        canvas.scale(currentScale, currentScale, width / 2f, height / 2f)
+        val scaleFraction = (currentScale - smallScale) / (bigScale - smallScale)//缩放进度
+        canvas.translate(offsetX * scaleFraction, offsetY * scaleFraction)  //用缩放进度0-1的变化改变offset值的影响，避免位置突变
+        canvas.scale(currentScale, currentScale, width / 2f, height / 2f)
+
+
+        if(drawLine){drawLines(adapter?.treeNode, canvas)} //绘制节点连线
+        super.onDraw(canvas)// 绘制子view
+
     }
 
     /**
      * 绘制父子节点的连线
      */
     private fun drawLines(node: TreeNode?, canvas: Canvas?) {
+        //遍历所有有父的节点，与其父进行连线
         if (node?.children != null && node.children!!.isNotEmpty()) {
             val path = Path()
             node.children!!.forEach {
@@ -185,7 +162,7 @@ class TouchableTreeView(context: Context, attributeSet: AttributeSet) : ViewGrou
     }
 
     private fun layoutAllView(treeNode: TreeNode) {
-
+        //遍历摆放childView  其实layout时无所谓顺序
         if (treeNode.children == null) {
             layoutSpecificView(treeNode)
             return
@@ -252,6 +229,23 @@ class TouchableTreeView(context: Context, attributeSet: AttributeSet) : ViewGrou
     }
 
 
+    override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
+        super.onSizeChanged(w, h, oldw, oldh)
+        smallScale = 1f
+        bigScale = 2f
+        currentScale = smallScale
+        scaleAnimator.setFloatValues(smallScale, bigScale)
+    }
+
+    override fun onTouchEvent(event: MotionEvent?): Boolean {
+        scaleGestureDetector.onTouchEvent(event)
+        if (!scaleGestureDetector.isInProgress) {//不同时处理两种触摸事件
+            gestureDetector.onTouchEvent(event)
+        }
+        return true
+    }
+
+    //越界修复  超过大值取小  小于小值取大
     private fun fixOffsets() {
         offsetX = min(offsetX, (width * bigScale - width) / 2)
         offsetX = max(offsetX, -(width * bigScale - width) / 2)
@@ -276,7 +270,7 @@ class TouchableTreeView(context: Context, attributeSet: AttributeSet) : ViewGrou
                     ((width * bigScale - width) / 2).toInt(),
                     (- (height * bigScale - height) / 2).toInt(),
                     ((height * bigScale - height) / 2).toInt(),200,200
-                )
+                )  //根据当前偏移 计算后续惯性滑动的偏移量  都是相对值
                 ViewCompat.postOnAnimation(this@TouchableTreeView, henFlingRunner)
             }
             return false
@@ -288,10 +282,10 @@ class TouchableTreeView(context: Context, attributeSet: AttributeSet) : ViewGrou
             distanceX: Float,
             distanceY: Float
         ): Boolean {
-            if (big) {
+            if (big) { //放大状态 可以滚动， 根据以上次回调的便宜距离计算当前偏移量
                 offsetX -= distanceX
                 offsetY -= distanceY
-                fixOffsets()
+                fixOffsets() // 同时需要进行偏移修正
                 invalidate()
             }
             return false
@@ -299,11 +293,11 @@ class TouchableTreeView(context: Context, attributeSet: AttributeSet) : ViewGrou
 
         override fun onDoubleTap(e: MotionEvent): Boolean {
             big = !big
-            if (big) {
-                offsetX = (e.x - width / 2f) * (1 - bigScale / smallScale)
+            if (big) {   //解决双击放大缩小，缩放点跟手问题，（双击问题和双指缩放类似，双指缩放可以看做是固定缩放比的基于某点的双击）
+                offsetX = (e.x - width / 2f) * (1 - bigScale / smallScale)  //撑出去的点 矫正回来  所以取反
                 offsetY = (e.y - height / 2f) * (1 - bigScale / smallScale)
                 fixOffsets()
-                scaleAnimator.start()
+                scaleAnimator.start()// 此刻从小放大，
             } else {
                 scaleAnimator.reverse()
             }
@@ -313,6 +307,7 @@ class TouchableTreeView(context: Context, attributeSet: AttributeSet) : ViewGrou
 
     inner class TreeScaleGestureListener : ScaleGestureDetector.OnScaleGestureListener {
         override fun onScaleBegin(detector: ScaleGestureDetector): Boolean {
+            //类比双击缩放
             offsetX = (detector.focusX - width / 2f) * (1 - bigScale / smallScale)
             offsetY = (detector.focusY - height / 2f) * (1 - bigScale / smallScale)
             return true
@@ -325,9 +320,17 @@ class TouchableTreeView(context: Context, attributeSet: AttributeSet) : ViewGrou
         override fun onScale(detector: ScaleGestureDetector): Boolean {
             val tempCurrentScale = currentScale * detector.scaleFactor
             if (tempCurrentScale < smallScale || tempCurrentScale > bigScale) {
+                //缩放量越界的忽略，并不消费此次回调，下次回调时的初始值为此回调之前的值
                 return false
             } else {
+                //下次回调时的初始值为上次消费的值
                 currentScale *= detector.scaleFactor // 0 1; 0 无穷
+                Log.d("onScale","${currentScale}")
+                if(currentScale >= (bigScale - 0.1f)){
+                    big = true
+                }else if(currentScale <= (smallScale +0.1f)){
+                    big = false
+                }
                 return true
             }
         }
