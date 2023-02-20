@@ -16,8 +16,6 @@ import android.widget.OverScroller
 import androidx.core.view.GestureDetectorCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.children
-import com.hencoder.scalableimageview.dp
-import com.hencoder.scalableimageview.getAvatar
 import com.xuyong.treeview.R
 import com.xuyong.treeview.px
 import kotlin.math.max
@@ -348,3 +346,7 @@ class TouchableTreeView(context: Context, attributeSet: AttributeSet) : ViewGrou
     }
 
 }
+
+
+//优化 ： 继承View实现 ，减少view的创建；实现点击； view池 移出屏幕的view回收；
+// 滑动overshot
