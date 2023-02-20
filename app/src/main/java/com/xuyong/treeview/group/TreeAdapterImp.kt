@@ -12,11 +12,11 @@ class TreeAdapterImp : TreeAdapter {
         val view =  LayoutInflater.from(viewGroup.context).inflate(R.layout.tree_node, viewGroup,false)
         val tvName = view.findViewById<TextView>(R.id.tv_name)
         tvName.text = node.name1
-        view.setOnClickListener {
-            if(this::nodeClickListener.isInitialized){
-                nodeClickListener(node)
-            }
-        }
+//        view.setOnClickListener {
+//            if(this::nodeClickListener.isInitialized){
+//                nodeClickListener(node)
+//            }
+//        }
         return view
     }
 

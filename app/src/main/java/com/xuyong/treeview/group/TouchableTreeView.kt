@@ -1,5 +1,6 @@
 package com.xuyong.treeview.group
 
+import android.animation.ObjectAnimator
 import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Color
@@ -7,13 +8,25 @@ import android.graphics.Paint
 import android.graphics.Path
 import android.util.AttributeSet
 import android.util.Log
+import android.view.GestureDetector
+import android.view.MotionEvent
+import android.view.ScaleGestureDetector
 import android.view.ViewGroup
+import android.widget.OverScroller
+import androidx.core.view.GestureDetectorCompat
+import androidx.core.view.ViewCompat
 import androidx.core.view.children
+import com.hencoder.scalableimageview.dp
+import com.hencoder.scalableimageview.getAvatar
 import com.xuyong.treeview.R
 import com.xuyong.treeview.px
 import kotlin.math.max
+import kotlin.math.min
 
-class TreeView(context: Context, attributeSet: AttributeSet) : ViewGroup(context, attributeSet) {
+
+private val IMAGE_SIZE = 300.dp.toInt()
+private const val EXTRA_SCALE_FACTOR = 1.5f
+class TouchableTreeView(context: Context, attributeSet: AttributeSet) : ViewGroup(context, attributeSet) {
 
     var verticalGap = 15
     var horizontalGap = 5
@@ -24,6 +37,48 @@ class TreeView(context: Context, attributeSet: AttributeSet) : ViewGroup(context
     var adapter: TreeAdapter? = null
 
     var maxDeep: Int = 0
+
+
+    private var originalOffsetX = 0f
+    private var originalOffsetY = 0f
+    private var offsetX = 0f
+    private var offsetY = 0f
+    private var smallScale = 0f
+    private var bigScale = 0f
+    private val henGestureListener = TreeGestureListener()
+    private val henScaleGestureListener = TreeScaleGestureListener()
+    private val henFlingRunner = HenFlingRunner()
+    private val gestureDetector = GestureDetectorCompat(context, henGestureListener)
+    private val scaleGestureDetector = ScaleGestureDetector(context, henScaleGestureListener)
+    private var big = false
+    private var currentScale = 0f
+        set(value) {
+            field = value
+            invalidate()
+        }
+    private val scaleAnimator = ObjectAnimator.ofFloat(this, "currentScale", smallScale, bigScale)
+    private val scroller = OverScroller(context)
+
+
+    override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
+        super.onSizeChanged(w, h, oldw, oldh)
+
+        originalOffsetX = (width - IMAGE_SIZE) / 2f
+        originalOffsetY = (height - IMAGE_SIZE) / 2f
+
+        smallScale = 1f
+        bigScale = 2f
+        currentScale = smallScale
+        scaleAnimator.setFloatValues(smallScale, bigScale)
+    }
+
+    override fun onTouchEvent(event: MotionEvent?): Boolean {
+        scaleGestureDetector.onTouchEvent(event)
+        if (!scaleGestureDetector.isInProgress) {
+            gestureDetector.onTouchEvent(event)
+        }
+        return true
+    }
 
     init {
         val obtainStyledAttributes =
@@ -90,13 +145,17 @@ class TreeView(context: Context, attributeSet: AttributeSet) : ViewGroup(context
         layoutAllView(adapter?.treeNode!!)
     }
 
-    override fun onDraw(canvas: Canvas?) {
-        canvas?.save()
-        canvas?.scale(2f,2f)
+    override fun onDraw(canvas: Canvas) {
+        val scaleFraction = (currentScale - smallScale) / (bigScale - smallScale)
+//        canvas.save()
+        canvas.translate(offsetX * scaleFraction, offsetY * scaleFraction)
+        canvas.scale(currentScale, currentScale, width / 2f, height / 2f)
         if(drawLine){drawLines(adapter?.treeNode, canvas)}
-        canvas?.restore()
+//        canvas.restore()
         super.onDraw(canvas)
-        canvas?.scale(2f,2f)
+
+//        canvas.translate(offsetX * scaleFraction, offsetY * scaleFraction)
+//        canvas.scale(currentScale, currentScale, width / 2f, height / 2f)
     }
 
     /**
@@ -190,6 +249,99 @@ class TreeView(context: Context, attributeSet: AttributeSet) : ViewGroup(context
         treeNode.y = ((treeNode.deep.minus(1)).times(childHeight)) //左上角y
         Log.d("measureAllView", "${treeNode.name1}-- ${treeNode.x} -- ${treeNode.y}")
         return (nodeX - (childWidth / 2))
+    }
+
+
+    private fun fixOffsets() {
+        offsetX = min(offsetX, (width * bigScale - width) / 2)
+        offsetX = max(offsetX, -(width * bigScale - width) / 2)
+        offsetY = min(offsetY, (height * bigScale - height) / 2)
+        offsetY = max(offsetY, -(height * bigScale - height) / 2)
+    }
+
+    inner class TreeGestureListener : GestureDetector.SimpleOnGestureListener() {
+        override fun onDown(e: MotionEvent): Boolean {
+            return true
+        }
+
+        override fun onFling(
+            downEvent: MotionEvent?,
+            currentEvent: MotionEvent?,
+            velocityX: Float,
+            velocityY: Float
+        ): Boolean {
+            if (big) {
+                scroller.fling(offsetX.toInt(), offsetY.toInt(), velocityX.toInt(), velocityY.toInt(),
+                    (- (width * bigScale - width) / 2).toInt(),
+                    ((width * bigScale - width) / 2).toInt(),
+                    (- (height * bigScale - height) / 2).toInt(),
+                    ((height * bigScale - height) / 2).toInt(),200,200
+                )
+                ViewCompat.postOnAnimation(this@TouchableTreeView, henFlingRunner)
+            }
+            return false
+        }
+
+        override fun onScroll(
+            downEvent: MotionEvent?,
+            currentEvent: MotionEvent?,
+            distanceX: Float,
+            distanceY: Float
+        ): Boolean {
+            if (big) {
+                offsetX -= distanceX
+                offsetY -= distanceY
+                fixOffsets()
+                invalidate()
+            }
+            return false
+        }
+
+        override fun onDoubleTap(e: MotionEvent): Boolean {
+            big = !big
+            if (big) {
+                offsetX = (e.x - width / 2f) * (1 - bigScale / smallScale)
+                offsetY = (e.y - height / 2f) * (1 - bigScale / smallScale)
+                fixOffsets()
+                scaleAnimator.start()
+            } else {
+                scaleAnimator.reverse()
+            }
+            return true
+        }
+    }
+
+    inner class TreeScaleGestureListener : ScaleGestureDetector.OnScaleGestureListener {
+        override fun onScaleBegin(detector: ScaleGestureDetector): Boolean {
+            offsetX = (detector.focusX - width / 2f) * (1 - bigScale / smallScale)
+            offsetY = (detector.focusY - height / 2f) * (1 - bigScale / smallScale)
+            return true
+        }
+
+        override fun onScaleEnd(detector: ScaleGestureDetector?) {
+
+        }
+
+        override fun onScale(detector: ScaleGestureDetector): Boolean {
+            val tempCurrentScale = currentScale * detector.scaleFactor
+            if (tempCurrentScale < smallScale || tempCurrentScale > bigScale) {
+                return false
+            } else {
+                currentScale *= detector.scaleFactor // 0 1; 0 无穷
+                return true
+            }
+        }
+    }
+
+    inner class HenFlingRunner : Runnable {
+        override fun run() {
+            if (scroller.computeScrollOffset()) {
+                offsetX = scroller.currX.toFloat()
+                offsetY = scroller.currY.toFloat()
+                invalidate()
+                ViewCompat.postOnAnimation(this@TouchableTreeView, this)
+            }
+        }
     }
 
 }

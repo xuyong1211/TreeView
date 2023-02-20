@@ -4,6 +4,7 @@ import android.os.Bundle
 import android.view.View
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import com.xuyong.treeview.group.TouchableTreeView
 import com.xuyong.treeview.group.TreeAdapterImp
 import com.xuyong.treeview.group.TreeNode
 import com.xuyong.treeview.group.TreeView
@@ -14,7 +15,7 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
         //  造一组树形结构的数据
-        val treeView: TreeView = findViewById<View>(R.id.treeView) as TreeView
+        val treeView: TouchableTreeView = findViewById<View>(R.id.treeView) as TouchableTreeView
         val adapterImp = TreeAdapterImp()
         val treeNode1 = TreeNode("侄子")
         val treeNode2 = TreeNode("侄女")
