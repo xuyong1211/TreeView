@@ -14,15 +14,12 @@ class TreeAdapterImp : TreeAdapter {
         tvName.text = node.name1
         view.setOnClickListener {
             if(this::nodeClickListener.isInitialized){
-                nodeClickListener.onNodeClick(node)
+                nodeClickListener(node)
             }
         }
         return view
     }
 
 
-    lateinit var nodeClickListener: NodeClickListener
-    interface NodeClickListener{
-        fun onNodeClick(node : TreeNode)
-    }
+    lateinit var nodeClickListener :(TreeNode)->Unit
 }

@@ -82,12 +82,12 @@ class MainActivity : AppCompatActivity() {
         list10.add(treeNode20)
         list10.add(treeNode23)
         val treeNode24 = TreeNode("父亲")
-        treeNode24.children = (list10)
-        adapterImp.treeNode = (treeNode24)
-        adapterImp.nodeClickListener = object :TreeAdapterImp.NodeClickListener{
-            override fun onNodeClick(node: TreeNode) {
-                Toast.makeText(this@MainActivity,node.name1,Toast.LENGTH_SHORT).show()
-            }
+        treeNode24.children = list10
+
+
+        adapterImp.treeNode = treeNode24
+        adapterImp.nodeClickListener = { node->
+            Toast.makeText(this@MainActivity,node.name1,Toast.LENGTH_SHORT).show()
         }
         treeView.adapter = (adapterImp)
     }

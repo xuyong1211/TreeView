@@ -32,7 +32,9 @@ class TreeView(context: Context, attributeSet: AttributeSet) : ViewGroup(context
         horizontalGap = obtainStyledAttributes.getInteger(R.styleable.TreeView_horizontalGap, 15)
         lineWidth = obtainStyledAttributes.getInteger(R.styleable.TreeView_lineWidth, 1)
         drawLine = obtainStyledAttributes.getBoolean(R.styleable.TreeView_drawLine, false)
-        if(drawLine){ setWillNotDraw(false) }
+        if (drawLine) {
+            setWillNotDraw(false)
+        }
         obtainStyledAttributes.recycle()
     }
 
@@ -48,8 +50,8 @@ class TreeView(context: Context, attributeSet: AttributeSet) : ViewGroup(context
             obtainAllView(treeNode, deep + 1)
         }
         if (node.children == null) {
-            widthCount++   // 末节点 占一个单位宽度
-            maxDeep = max(deep, maxDeep)
+            widthCount++   // 末节点 占一个单位宽度  由此得到一个item宽度
+            maxDeep = max(deep, maxDeep)  // 由此可得到一个item高度
         }
         val childView = adapter?.getView(node, this)
         node.view = childView
@@ -122,12 +124,7 @@ class TreeView(context: Context, attributeSet: AttributeSet) : ViewGroup(context
     private fun layoutAllView(treeNode: TreeNode) {
 
         if (treeNode.children == null) {
-            treeNode.view?.layout(
-                treeNode.x + 2.px(),
-                treeNode.y,
-                (treeNode.x + childWidth),
-                (treeNode.y + childHeight - verticalGap.px())
-            )
+            layoutSpecificView(treeNode)
             return
         }
 
@@ -135,6 +132,10 @@ class TreeView(context: Context, attributeSet: AttributeSet) : ViewGroup(context
             layoutAllView(childNode)
         }
 
+        layoutSpecificView(treeNode)
+    }
+
+    private fun layoutSpecificView(treeNode: TreeNode) {
         treeNode.view?.layout(
             treeNode.x + 2.px(),
             treeNode.y,
@@ -174,15 +175,15 @@ class TreeView(context: Context, attributeSet: AttributeSet) : ViewGroup(context
         for ((index, childNode) in (treeNode.children!!.withIndex())) {
             val x = measureAllView(childNode)
             if (index == 0) {
-                leftX = x + childWidth
+                leftX = x + childWidth  //最左子节点的右边x
             }
             if (index == (treeNode.children?.size?.minus(1))) {
-                rightX = x
+                rightX = x   //最右边子节点左边x
             }
         }
-        val nodeX = leftX + (rightX - leftX) / 2  //父节点的x坐标 取其最左和最右两个子node的中点
-        treeNode.x = (nodeX - (childWidth / 2))
-        treeNode.y = ((treeNode.deep.minus(1)).times(childHeight))
+        val nodeX = leftX + (rightX - leftX) / 2  //父节点的中点x坐标 取其最左和最右两个子node的中点
+        treeNode.x = (nodeX - (childWidth / 2))//左上角x
+        treeNode.y = ((treeNode.deep.minus(1)).times(childHeight)) //左上角y
         Log.d("measureAllView", "${treeNode.name1}-- ${treeNode.x} -- ${treeNode.y}")
         return (nodeX - (childWidth / 2))
     }
